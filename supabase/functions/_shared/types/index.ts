@@ -24,12 +24,12 @@ export type SupabaseUser = TUser & {
 };
 
 export interface UserContext {
-        id: number;
-        username?: string;
-        first_name: string;
-        last_name?: string;
-        is_bot?: boolean;
-        language_code?: string;
+  id: number;
+  username?: string;
+  first_name: string;
+  last_name?: string;
+  is_bot?: boolean;
+  language_code?: string;
 }
 
 export interface UserData extends TUser {
@@ -271,4 +271,14 @@ export interface getAiSupabaseFeedbackT {
   query: string;
   rpc_function_name: string;
   language_code: string;
+}
+
+// Game
+export interface GameStep {
+  loka: number;
+  previous_loka: number;
+  is_finished?: boolean;
+  direction: "snake 🐍" | "arrow 🏹" | "step 🚶🏼" | "win 🕉" | "stop";
+  consecutive_sixes: number;
+  position_before_three_sixes: number;
 }

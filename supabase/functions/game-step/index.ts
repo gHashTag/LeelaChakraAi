@@ -2,27 +2,27 @@
 // https://deno.land/manual/getting_started/setup_your_environment
 // This enables autocomplete, go to definition, etc.
 
+import { GameStep } from "../_shared/types/index.ts";
+
 // Setup type definitions for built-in Supabase Runtime APIs
 /// <reference types="https://esm.sh/@supabase/functions-js/src/edge-runtime.d.ts" />
-
+import { supabase } from "../_shared/supabase/index.ts";
 console.log("Hello from Functions!");
 
-interface GameStep {
-  loka: number;
-  previous_loka: number;
-  is_finished?: boolean;
-  direction: "snake 🐍" | "arrow 🏹" | "step 🚶🏼" | "win 🕉" | "stop";
-  consecutive_sixes: number;
-  position_before_three_sixes: number;
-}
-
-Deno.serve(async (req: Request): Promise<Response> => {
+Deno.serve(async (req) => {
   const { roll, result }: { roll: number; result: GameStep[] } = await req
     .json();
-
+  console.log(roll, "roll");
+  console.log(result, "result");
   const TOTAL = 72;
   const WIN_LOKA = 68;
   const MAX_ROLL = 6;
+
+  const { data: userData, error: userError } = await supabase
+    .from("users")
+    .select("*");
+
+  console.log(userData, "userData");
 
   const {
     loka,
@@ -33,6 +33,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }: GameStep = result[result.length - 1];
 
   let newLoka = loka + roll;
+  console.log(newLoka, "newLoka");
   let direction: GameStep["direction"];
   let new_consecutive_sixes: number;
   let new_position_before_three_sixes = position_before_three_sixes;
@@ -40,6 +41,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (roll == MAX_ROLL) {
     new_position_before_three_sixes = loka;
     new_consecutive_sixes = consecutive_sixes + 1;
+    console.log(
+      new_position_before_three_sixes,
+      "new_position_before_three_sixes",
+    );
     if (consecutive_sixes == 2) {
       newLoka = position_before_three_sixes;
       new_consecutive_sixes = 0;
@@ -61,14 +66,16 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   // Check for victory conditions
-  if (is_finished && loka === WIN_LOKA) {
+  if (!is_finished && newLoka === WIN_LOKA) {
     const output: GameStep = {
-      loka: loka,
-      previous_loka,
+      loka: newLoka,
+      previous_loka: loka,
       direction: "win 🕉",
       consecutive_sixes: new_consecutive_sixes,
       position_before_three_sixes: new_position_before_three_sixes,
+      is_finished: true,
     };
+    console.log(output, "output");
     return new Response(
       JSON.stringify(output),
       { headers: { "Content-Type": "application/json" } },
@@ -174,4 +181,4 @@ Deno.serve(async (req: Request): Promise<Response> => {
 */
 
 //supabase functions serve --env-file supabase/functions/.env --no-verify-jwt
-//// supabase functions deploy ai-koshey --no-verify-jwt
+// supabase functions deploy game-step --no-verify-jwt
