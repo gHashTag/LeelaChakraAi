@@ -38,6 +38,26 @@ Deno.test("Test roll resulting in win 🕉", async () => {
   assertEquals(response.loka, 68);
 });
 
+Deno.test("Test roll resulting in re-entry to game", async () => {
+  const result: GameStep[] = [
+    {
+      loka: 68,
+      previous_loka: 68,
+      direction: "step 🚶🏼",
+      consecutive_sixes: 0,
+      position_before_three_sixes: 68,
+      is_finished: true,
+    },
+  ];
+  const response = await testGameStepFunction(6, result);
+  assertEquals(response.loka, 6);
+  assertEquals(response.previous_loka, 68);
+  assertEquals(response.direction, "step 🚶🏼");
+  assertEquals(response.consecutive_sixes, 1);
+  assertEquals(response.position_before_three_sixes, 68);
+  assertEquals(response.is_finished, false);
+});
+
 // // Test the creation and functionality of the Supabase client
 // const testClientCreation = async () => {
 //   // Test a simple query to the database

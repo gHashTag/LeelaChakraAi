@@ -65,6 +65,24 @@ Deno.serve(async (req) => {
     new_consecutive_sixes = 0;
   }
 
+  // Check for re-entry condition
+  if (is_finished && roll === MAX_ROLL) {
+    // Если игра завершена и выброшено 6, игрок возвращается в игру на позицию 6
+    const output: GameStep = {
+      loka: 6,
+      previous_loka: loka,
+      direction: "step 🚶🏼",
+      consecutive_sixes: new_consecutive_sixes,
+      position_before_three_sixes: new_position_before_three_sixes,
+      is_finished: false, // Устанавливаем is_finished в false, так как игрок вернулся в игру
+    };
+    console.log(output, "output");
+    return new Response(
+      JSON.stringify(output),
+      { headers: { "Content-Type": "application/json" } },
+    );
+  }
+
   // Check for victory conditions
   if (!is_finished && newLoka === WIN_LOKA) {
     const output: GameStep = {
