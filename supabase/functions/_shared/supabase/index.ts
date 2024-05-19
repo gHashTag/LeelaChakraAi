@@ -15,7 +15,7 @@ export const client = () => {
     SUPABASE_URL ?? "",
     SUPABASE_ANON_KEY ?? "",
   );
-  console.log(supabaseClient);
+
   return supabaseClient;
 };
 

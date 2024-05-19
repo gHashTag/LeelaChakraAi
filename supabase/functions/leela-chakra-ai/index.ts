@@ -7,8 +7,8 @@ import {
   HttpError,
 } from "https://deno.land/x/grammy@v1.8.3/mod.ts";
 import {
-  leelaChakraBot,
   handleUpdateLeelaChakra,
+  leelaChakraBot,
 } from "../_shared/telegram/bots.ts";
 import { getAiFeedbackFromSupabase } from "../_shared/supabase/ai.ts";
 import {
@@ -46,7 +46,7 @@ leelaChakraBot.command("start", async (ctx: Context) => {
   console.log("start");
   if (!ctx.from) return;
   await ctx.replyWithChatAction("typing"); // Отправка действия набора сообщения в чате
-  console.log("🥀create user:", ctx.from)
+  console.log("🥀create user:", ctx.from);
   await createUser(ctx.from);
   const isRu = ctx.from?.language_code === "ru";
   await ctx.reply(
@@ -76,8 +76,7 @@ leelaChakraBot.command("course", async (ctx) => {
     {
       reply_markup: {
         inline_keyboard: [
-          [{ text: "Start test!", callback_data: "start_test" },
-        ],
+          [{ text: "Start test!", callback_data: "start_test" }],
         ],
       },
     },
@@ -91,19 +90,18 @@ leelaChakraBot.on("message:text", async (ctx) => {
 
     const language_code = ctx.from.language_code || "en";
 
-  if (query) {
-   
-    // const { content } = await getAiFeedbackFromSupabase({
-    //   query,
-    //   rpc_function_name: `match_${marketplace}_documents`,
-    //   language_code,
-    // });
-    // console.log("💤content", content)
-    // await ctx.reply(content, { parse_mode: "Markdown" });
-    return;
+    if (query) {
+      // const { content } = await getAiFeedbackFromSupabase({
+      //   query,
+      //   rpc_function_name: `match_${marketplace}_documents`,
+      //   language_code,
+      // });
+      // console.log("💤content", content)
+      // await ctx.reply(content, { parse_mode: "Markdown" });
+      return;
     }
   } catch (error) {
-    console.log("🚀 error", error)
+    console.log("🚀 error", error);
   }
 });
 
@@ -120,7 +118,7 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
     await ctx.reply("🤖 bem bam hello from leela");
     return;
   }
-  
+
   if (callbackData === "start_test") {
     try {
       await resetProgress({
