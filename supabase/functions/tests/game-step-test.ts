@@ -451,4 +451,24 @@ Deno.test("Test arrow at 54", async () => {
   assertEquals(response.direction, "arrow 🏹");
 });
 
+Deno.test("Test rolling six three times", async () => {
+  const result: GameStep[] = [
+    {
+      loka: 10,
+      previous_loka: 16,
+      direction: "step 🚶🏼",
+      consecutive_sixes: 2,
+      position_before_three_sixes: 4,
+      is_finished: false,
+    },
+  ];
+  const response = await testGameStepFunction(6, result);
+  assertEquals(response.loka, 4);
+  assertEquals(response.previous_loka, 16);
+  assertEquals(response.direction, "snake 🐍");
+  assertEquals(response.consecutive_sixes, 0);
+  assertEquals(response.position_before_three_sixes, 4);
+  assertEquals(response.is_finished, false);
+});
+
 // deno test --allow-all --env=supabase/functions/.env supabase/functions/tests/game-step-test.ts

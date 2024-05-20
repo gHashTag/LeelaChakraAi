@@ -6,8 +6,6 @@ import { GameStep } from "../_shared/types/index.ts";
 
 // Setup type definitions for built-in Supabase Runtime APIs
 /// <reference types="https://esm.sh/@supabase/functions-js/src/edge-runtime.d.ts" />
-import { supabase } from "../_shared/supabase/index.ts";
-console.log("Hello from Functions!");
 
 Deno.serve(async (req) => {
   const { roll, result }: { roll: number; result: GameStep[] } = await req
@@ -18,12 +16,6 @@ Deno.serve(async (req) => {
   const WIN_LOKA = 68;
   const MAX_ROLL = 6;
 
-  const { data: userData, error: userError } = await supabase
-    .from("users")
-    .select("*");
-
-  console.log(userData, "userData");
-
   const {
     loka,
     is_finished,
@@ -32,7 +24,7 @@ Deno.serve(async (req) => {
   }: GameStep = result[result.length - 1];
 
   let newLoka = loka + roll;
-  console.log(newLoka, "newLoka");
+
   let direction: GameStep["direction"];
   let new_consecutive_sixes: number;
   let new_position_before_three_sixes = position_before_three_sixes;
@@ -40,10 +32,6 @@ Deno.serve(async (req) => {
   if (roll == MAX_ROLL) {
     new_position_before_three_sixes = loka;
     new_consecutive_sixes = consecutive_sixes + 1;
-    console.log(
-      new_position_before_three_sixes,
-      "new_position_before_three_sixes",
-    );
     if (consecutive_sixes == 2) {
       newLoka = position_before_three_sixes;
       new_consecutive_sixes = 0;
@@ -54,6 +42,7 @@ Deno.serve(async (req) => {
         direction,
         consecutive_sixes: new_consecutive_sixes,
         position_before_three_sixes: new_position_before_three_sixes,
+        is_finished: false,
       };
       return new Response(
         JSON.stringify(output),
@@ -77,7 +66,6 @@ Deno.serve(async (req) => {
         position_before_three_sixes: new_position_before_three_sixes,
         is_finished: false, // Устанавливаем is_finished в false, так как игрок вернулся в игру
       };
-      console.log(output, "output");
       return new Response(
         JSON.stringify(output),
         { headers: { "Content-Type": "application/json" } },
