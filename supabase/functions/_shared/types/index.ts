@@ -17,11 +17,18 @@ export type SupabaseUser = TUser & {
   telegram_id?: number | null;
   email?: string | null;
   created_at?: Date;
-  aggregateverifier?: string | null;
-  admin_email?: string | null;
   role?: string | null;
   display_name?: string | null;
+  position?: string | null;
+  designation?: string | null;
 };
+
+export interface UserWithFullName {
+  data: TUser;
+  position: string;
+  designation: string;
+  full_name: string;
+}
 
 export interface UserContext {
   id: number;
@@ -269,7 +276,7 @@ export interface Filter {
 
 export interface getAiSupabaseFeedbackT {
   query: string;
-  rpc_function_name: string;
+  username: string;
   language_code: string;
 }
 

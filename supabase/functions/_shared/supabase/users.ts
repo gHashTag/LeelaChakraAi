@@ -5,6 +5,7 @@ import {
   SupabaseUser,
   UserContext,
   UserData,
+  UserWithFullName,
 } from "../types/index.ts";
 import { supabase } from "./index.ts";
 
@@ -59,7 +60,7 @@ export async function createUser(
 
 export const getSupabaseUser = async (
   username: string,
-): Promise<SupabaseUser | null | Response> => {
+): Promise<SupabaseUser | null > => {
   try {
     const response = await supabase
       .from("users")
@@ -128,7 +129,7 @@ export async function getUid(
 
 export const getUser = async (
   username: string,
-): Promise<SupabaseUser[] | Response> => {
+): Promise<UserWithFullName> => {
   try {
     const response = await supabase
       .from("users")
@@ -139,7 +140,12 @@ export const getUser = async (
       throw new Error("Error getUser: " + response.error.message);
     }
 
-    return response.data;
+    return {
+      data: response.data[0],
+      position: response.data[0].position,
+      designation: response.data[0].designation,
+      full_name: `${response.data[0].first_name} ${response.data[0].last_name}`,
+    };
   } catch (error) {
     throw new Error("Error getUser: " + error);
   }

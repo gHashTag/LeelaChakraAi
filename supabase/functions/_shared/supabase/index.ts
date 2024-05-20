@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { DEV } from "../constants.ts";
+import { DEV, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY } from "../constants.ts";
 
 if (!Deno.env.get("NEXT_PUBLIC_SUPABASE_ANON_KEY")) {
   throw new Error("NEXT_PUBLIC_SUPABASE_ANON_KEY is not set");
@@ -50,3 +50,14 @@ export const clientInvoke = () => {
 };
 
 export const supabaseLocal = clientInvoke();
+
+export const clientSQL = () => {
+  const supabaseClient = createClient(
+    NEXT_PUBLIC_SUPABASE_URL ?? "",
+    NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+  );
+
+  return supabaseClient;
+};
+
+export const supabaseSQL = clientSQL();

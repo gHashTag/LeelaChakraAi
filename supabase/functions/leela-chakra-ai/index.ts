@@ -91,13 +91,17 @@ leelaChakraBot.on("message:text", async (ctx) => {
     const language_code = ctx.from.language_code || "en";
 
     if (query) {
-      // const { content } = await getAiFeedbackFromSupabase({
-      //   query,
-      //   rpc_function_name: `match_${marketplace}_documents`,
-      //   language_code,
-      // });
-      // console.log("💤content", content)
-      // await ctx.reply(content, { parse_mode: "Markdown" });
+      if (!ctx.from.username) {
+        await ctx.reply("You are not registered yet. Please, register to use this bot.");
+        throw new Error("User is not registered yet");
+      }
+      const { ai_content } = await getAiFeedbackFromSupabase({
+        query,
+        username: ctx.from.username,
+        language_code,
+      });
+      console.log("💤content", ai_content)
+      await ctx.reply(ai_content, { parse_mode: "Markdown" });
       return;
     }
   } catch (error) {
@@ -153,7 +157,7 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
         });
         // Формируем сообщение
         const messageText =
-          `${topic}\n\n<i><u>Теперь мы предлагаем вам закрепить полученные знания.</u></i>\n\n<b>Total tokens: ${allAnswers} $IGLA</b>`;
+          `${topic}\n\n<i><u>Теперь мы предлагаем вам закрепить полученные знания.</u></i>\n\n<b>Total tokens: ${allAnswers} $LEELA</b>`;
 
         // Формируем кнопки
         const inlineKeyboard = [
@@ -245,7 +249,7 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
       });
       // Формируем сообщение
       const messageText =
-        `<b>Вопрос №${id}</b>\n\n${question}\n\n<b> Total tokens: ${allAnswers} $IGLA</b>`;
+        `<b>Вопрос №${id}</b>\n\n${question}\n\n<b> Total tokens: ${allAnswers} $LEELA</b>`;
 
       // Формируем кнопки
       const inlineKeyboard = [
@@ -295,6 +299,7 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
       if (questions.length > 0) {
         const {
           correct_option_id,
+          id
         } = questions[0];
 
         const user_id = await getUid(ctx.callbackQuery.from.username || "");
@@ -335,13 +340,11 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
           language: "all",
         });
 
-        const lastCallbackContext = await getLastCallback(language);
-        console.log(lastCallbackContext);
-        if (lastCallbackContext) {
-          const callbackResult =
-            `${language}_${lastCallbackContext.lesson_number}_${lastCallbackContext.subtopic}`;
-          if (newPath === callbackResult) {
-            const correctProcent = correctAnswers * 0.8;
+        const lastCallbackId = await getLastCallback(language);
+        console.log(lastCallbackId);
+        if (lastCallbackId) {
+          if (questions[0].id === lastCallbackId) {
+            const correctProcent = (correctAnswers / lastCallbackId) * 100;
             if (correctProcent >= 80) {
               await updateResult({
                 user_id: user_id.toString(),
@@ -350,8 +353,8 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
               });
               await ctx.reply(
                 isRu
-                  ? `<b>🥳 Поздравляем, вы прошли тест! </b>\n\n Total tokens: ${allAnswers} $IGLA`
-                  : `<b>🥳 Congratulations, you passed the test!</b>\n\n Total tokens: ${allAnswers} $IGLA`,
+                  ? `<b>🥳 Поздравляем, вы прошли тест! </b>\n\n Total tokens: ${allAnswers} $LEELA`
+                  : `<b>🥳 Congratulations, you passed the test!</b>\n\n Total tokens: ${allAnswers} $LEELA`,
                 { parse_mode: "HTML" },
               );
             } else {
@@ -362,8 +365,8 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
               });
               await ctx.reply(
                 isRu
-                  ? `<b>🥲 Вы не прошли тест, но это не помешает вам развиваться! </b>\n\n Total tokens: ${allAnswers} $IGLA`
-                  : `<b>🥲 You didn't pass the test, but that won't stop you from developing!</b>\n\n Total tokens: ${allAnswers} $IGLA`,
+                  ? `<b>🥲 Вы не прошли тест, но это не помешает вам развиваться! </b>\n\n Total tokens: ${allAnswers} $LEELA`
+                  : `<b>🥲 You didn't pass the test, but that won't stop you from developing!</b>\n\n Total tokens: ${allAnswers} $LEELA`,
                 { parse_mode: "HTML" },
               );
             }
@@ -382,7 +385,7 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
           const topic = isRu ? ruTopic : enTopic;
           // Формируем сообщение
           const messageText =
-            `${topic}\n\n<i><u>Теперь мы предлагаем вам закрепить полученные знания.</u></i>\n\n<b> Total tokens: ${allAnswers} $IGLA</b>`;
+            `${topic}\n\n<i><u>Теперь мы предлагаем вам закрепить полученные знания.</u></i>\n\n<b> Total tokens: ${allAnswers} $LEELA</b>`;
 
           // Формируем кнопки
           const inlineKeyboard = [
