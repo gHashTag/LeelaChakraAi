@@ -273,12 +273,19 @@ export interface getAiSupabaseFeedbackT {
   language_code: string;
 }
 
+export const DIRECTION_OPTIONS = [
+  "snake 🐍",
+  "arrow 🏹",
+  "step 🚶🏼",
+  "win 🕉",
+  "stop 🛑",
+];
 // Game
 export interface GameStep {
   loka: number;
-  previous_loka: number;
-  is_finished?: boolean;
-  direction: "snake 🐍" | "arrow 🏹" | "step 🚶🏼" | "win 🕉" | "stop";
+  previous_loka?: number;
+  is_finished: boolean;
+  direction: (typeof DIRECTION_OPTIONS)[number];
   consecutive_sixes: number;
   position_before_three_sixes: number;
 }

@@ -26,7 +26,6 @@ Deno.serve(async (req) => {
 
   const {
     loka,
-    previous_loka,
     is_finished,
     consecutive_sixes,
     position_before_three_sixes,
@@ -66,21 +65,39 @@ Deno.serve(async (req) => {
   }
 
   // Check for re-entry condition
-  if (is_finished && roll === MAX_ROLL) {
-    // Если игра завершена и выброшено 6, игрок возвращается в игру на позицию 6
-    const output: GameStep = {
-      loka: 6,
-      previous_loka: loka,
-      direction: "step 🚶🏼",
-      consecutive_sixes: new_consecutive_sixes,
-      position_before_three_sixes: new_position_before_three_sixes,
-      is_finished: false, // Устанавливаем is_finished в false, так как игрок вернулся в игру
-    };
-    console.log(output, "output");
-    return new Response(
-      JSON.stringify(output),
-      { headers: { "Content-Type": "application/json" } },
-    );
+
+  if (is_finished) {
+    if (roll === MAX_ROLL) {
+      // Если игра завершена и выброшено 6, игрок возвращается в игру на позицию 6
+      const output: GameStep = {
+        loka: 6,
+        previous_loka: loka,
+        direction: "step 🚶🏼",
+        consecutive_sixes: new_consecutive_sixes,
+        position_before_three_sixes: new_position_before_three_sixes,
+        is_finished: false, // Устанавливаем is_finished в false, так как игрок вернулся в игру
+      };
+      console.log(output, "output");
+      return new Response(
+        JSON.stringify(output),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    } else {
+      // Если игра завершена и выброшено любое число, кроме 6, игрок остается на месте
+      const output: GameStep = {
+        loka: loka,
+        previous_loka: loka,
+        direction: "stop 🛑",
+        consecutive_sixes: new_consecutive_sixes,
+        position_before_three_sixes: new_position_before_three_sixes,
+        is_finished: true, // Игрок остается завершившим игру
+      };
+      console.log(output, "output");
+      return new Response(
+        JSON.stringify(output),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    }
   }
 
   // Check for victory conditions
@@ -163,7 +180,7 @@ Deno.serve(async (req) => {
     newLoka = 68;
     direction = "arrow 🏹";
   } else if (newLoka > TOTAL) {
-    direction = "stop";
+    direction = "stop 🛑";
     // Player overshoots the goal, stays in place
     newLoka = loka;
   } else {
@@ -178,6 +195,7 @@ Deno.serve(async (req) => {
     direction,
     consecutive_sixes: new_consecutive_sixes,
     position_before_three_sixes: new_position_before_three_sixes,
+    is_finished: false,
   };
 
   return new Response(
