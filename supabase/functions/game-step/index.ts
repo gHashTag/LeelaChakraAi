@@ -30,7 +30,6 @@ Deno.serve(async (req) => {
   let new_position_before_three_sixes = position_before_three_sixes;
 
   if (roll == MAX_ROLL) {
-    new_position_before_three_sixes = loka;
     new_consecutive_sixes = consecutive_sixes + 1;
     if (consecutive_sixes == 2) {
       newLoka = position_before_three_sixes;
@@ -48,6 +47,8 @@ Deno.serve(async (req) => {
         JSON.stringify(output),
         { headers: { "Content-Type": "application/json" } },
       );
+    } else {
+      new_position_before_three_sixes = loka;
     }
   } else {
     new_consecutive_sixes = 0;
