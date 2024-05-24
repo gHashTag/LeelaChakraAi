@@ -296,3 +296,10 @@ export interface GameStep {
   consecutive_sixes: number;
   position_before_three_sixes: number;
 }
+
+export interface GameStepResultT {
+  roll: number;
+  response: GameStep[];
+  telegram_id: string;
+}
+

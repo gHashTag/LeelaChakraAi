@@ -22,6 +22,7 @@ import {
 } from "../_shared/supabase/progress.ts";
 import { createUser, getUid } from "../_shared/supabase/users.ts";
 import { pathIncrement } from "../path-increment.ts";
+import { gameStep } from "../_shared/supabase/game.ts";
 
 // Setup type definitions for built-in Supabase Runtime APIs
 /// <reference types="https://esm.sh/@supabase/functions-js/src/edge-runtime.d.ts" />
@@ -65,6 +66,29 @@ leelaChakraBot.command("start", async (ctx: Context) => {
   );
 });
 
+leelaChakraBot.command("step", async (ctx) => {
+  console.log("step");
+  await ctx.replyWithChatAction("typing");
+  const roll = Math.floor(Math.random() * 6) + 1;
+
+  const response = {
+  "loka": 11,
+  "direction": "step 🚶🏼",
+  "consecutive_sixes": 0,
+  "position_before_three_sixes": 0,
+  "is_finished": true
+}
+
+if (ctx.from?.id) {
+  const step = await gameStep({roll: roll, response: [response], telegram_id: ctx.from?.id.toString()})
+  console.log("step", step)
+  await ctx.reply(`${step.direction} Your plan: ${step.loka}`)
+  return
+}
+await ctx.reply("Не получается найти ваш telegram_id")
+return
+});
+
 leelaChakraBot.command("course", async (ctx) => {
   console.log("course");
   await ctx.replyWithChatAction("typing");
@@ -81,6 +105,7 @@ leelaChakraBot.command("course", async (ctx) => {
       },
     },
   );
+  return
 });
 
 leelaChakraBot.on("message:text", async (ctx) => {
