@@ -22,7 +22,7 @@ import {
 } from "../_shared/supabase/progress.ts";
 import { createUser, getUid } from "../_shared/supabase/users.ts";
 import { pathIncrement } from "../path-increment.ts";
-import { gameStep } from "../_shared/supabase/game.ts";
+import { gameStep, getLastStep } from "../_shared/supabase/game.ts";
 
 // Setup type definitions for built-in Supabase Runtime APIs
 /// <reference types="https://esm.sh/@supabase/functions-js/src/edge-runtime.d.ts" />
@@ -48,17 +48,25 @@ leelaChakraBot.command("start", async (ctx: Context) => {
   if (!ctx.from) return;
   await ctx.replyWithChatAction("typing"); // Отправка действия набора сообщения в чате
   console.log("🥀create user:", ctx.from);
-  await createUser(ctx.from);
+  await createUser({
+    telegram_id: ctx.from.id,
+    first_name: ctx.from.first_name,
+    last_name: ctx.from.last_name,
+    username: ctx.from.username,
+    is_bot: ctx.from.is_bot,
+    language_code: ctx.from.language_code,
+  });
   const isRu = ctx.from?.language_code === "ru";
   await ctx.reply(
     isRu
-      ? `🛍 Приветствую, ${ctx.from?.first_name}!`
-      : `🛍 Greetings, ${ctx.from?.first_name}!`,
+      ? `🔮 Добро пожаловать в игру самопознания "Лила Чакра", ${ctx.from?.first_name}! 🔮\n\n🌟 В этой увлекательной игре ты отправишься в захватывающее путешествие через чакры, открывая тайны и возможности, скрытые внутри тебя.\n\n💫 Готов ли ты погрузиться в мир духовного роста, встретить свое истинное "Я" и раскрыть потенциал своих энергетических центров? С "Лилой Чакра" ты сможешь узнать глубже себя, обрести гармонию и понимание своего внутреннего мира.\n\n🔮 Пусть каждое испытание в игре принесет тебе новое понимание, мудрость и вдохновение. Дерзай и открой двери своего подсознания, исследуя таинственные чакры и обретая внутреннюю гармонию!`
+      : `🔮 Welcome to the Leela Chakra Self-Discovery Game, ${ctx.from?.first_name}! 🔮\n\n🌟 In this exciting game, you will embark on an exciting journey through the chakras, discovering the secrets and possibilities hidden within you.\n\n💫 Are you ready to dive into the world of spiritual growth, meet your true self and unlock the potential of your energy centers? With "Leela Chakra" you can learn more about yourself, find harmony and understanding of your inner world.\n\n🔮 May each challenge in the game bring you new insights, wisdom and inspiration. Dare to open the doors of your subconscious mind, exploring the mysterious chakras and finding inner harmony!`,
     {
       reply_markup: {
         inline_keyboard: [
           [
-            { text: "Leela!", callback_data: "leela_chakra" },
+            {text: isRu ? "Начать тест" : "Start test", callback_data: "start_test"},
+            {text: isRu ? "Начать игру" : "Start game", callback_data: "make_step"}
           ],
         ],
       },
@@ -69,24 +77,15 @@ leelaChakraBot.command("start", async (ctx: Context) => {
 leelaChakraBot.command("step", async (ctx) => {
   console.log("step");
   await ctx.replyWithChatAction("typing");
-  const roll = Math.floor(Math.random() * 6) + 1;
-
-  const response = {
-  "loka": 11,
-  "direction": "step 🚶🏼",
-  "consecutive_sixes": 0,
-  "position_before_three_sixes": 0,
-  "is_finished": true
-}
-
-if (ctx.from?.id) {
-  const step = await gameStep({roll: roll, response: [response], telegram_id: ctx.from?.id.toString()})
-  console.log("step", step)
-  await ctx.reply(`${step.direction} Your plan: ${step.loka}`)
-  return
-}
-await ctx.reply("Не получается найти ваш telegram_id")
-return
+  const isRu = ctx.from?.language_code === "ru";
+ 
+  ctx.reply(isRu ? "Чтобы сделать шаг, нажмите кнопку ниже!" : "To make a step, click the button below!", {
+    reply_markup: {
+      inline_keyboard: [
+        [{text: isRu ? "Сделать шаг" : "Make a step", callback_data: "make_step"}]
+      ]
+    }
+  })
 });
 
 leelaChakraBot.command("course", async (ctx) => {
@@ -141,8 +140,24 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
   const isHaveAnswer = callbackData.split("_").length === 4;
   const isRu = ctx.from?.language_code === "ru";
 
-  await ctx.editMessageReplyMarkup({ reply_markup: { inline_keyboard: [] } });
-
+  if (callbackData.startsWith("make_step")){
+    console.log("step...");
+    await ctx.replyWithChatAction("typing");
+  
+    const roll = Math.floor(Math.random() * 6) + 1;
+  
+  if (ctx.from?.id) {
+    const user_id = await getUid(ctx.from?.username || "");
+    if (!user_id) throw new Error("User not found");
+    const lastStep = await getLastStep(user_id.toString())
+    const step = await gameStep({roll: roll, response: [lastStep], telegram_id: ctx.from?.id.toString()})
+    console.log("step", step)
+    await ctx.reply(`${step.direction} Your plan: ${step.loka}`)
+    return
+  }
+  await ctx.reply("Не получается найти ваш telegram_id")
+  return
+  }
   if (callbackData.startsWith("leela_")) {
     await ctx.reply("🤖 bem bam hello from leela");
     return;
@@ -150,6 +165,7 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
 
   if (callbackData === "start_test") {
     try {
+      await ctx.editMessageReplyMarkup({ reply_markup: { inline_keyboard: [] } });
       await resetProgress({
         username: ctx.callbackQuery.from.username || "",
         language: "leelachakra",
@@ -217,6 +233,7 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
 
   if (!isHaveAnswer) {
     try {
+      await ctx.editMessageReplyMarkup({ reply_markup: { inline_keyboard: [] } });
       const [language, lesson, subtopic] = callbackData.split("_");
       let questions;
       if (!isNaN(Number(lesson)) && !isNaN(Number(subtopic))) {
@@ -312,6 +329,7 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
 
   if (isHaveAnswer) {
     try {
+      await ctx.editMessageReplyMarkup({ reply_markup: { inline_keyboard: [] } });
       const [language, lesson_number, subtopic, answer] = callbackData.split(
         "_",
       );
@@ -354,7 +372,7 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
         });
         const newPath = await pathIncrement({
           path,
-          isSubtopic: biggestSubtopic === subtopic ? false : true,
+          isSubtopic: Number(biggestSubtopic) === Number(subtopic) ? false : true,
         });
         const correctAnswers = await getCorrects({
           user_id: user_id.toString(),

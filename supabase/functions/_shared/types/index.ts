@@ -31,7 +31,7 @@ export interface UserWithFullName {
 }
 
 export interface UserContext {
-  id: number;
+  telegram_id: number;
   username?: string;
   first_name: string;
   last_name?: string;

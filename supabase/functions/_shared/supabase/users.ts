@@ -13,15 +13,17 @@ export async function createUser(
   ctx: UserContext,
 ): Promise<UserData[] | void> {
   try {
-    const { first_name, last_name, username, is_bot, language_code, id } =
+    const { first_name, last_name, username, is_bot, language_code, telegram_id } =
       ctx
 
     const { data: existingUser, error } = await supabase
       .from("users")
       .select("*")
-      .eq("telegram_id", id)
+      .eq("telegram_id", telegram_id)
       .maybeSingle();
 
+      console.log(existingUser, "existingUser")
+      console.log(error, "error")
     if (error && error.message !== "No rows found") {
       throw new Error("Error checking user existence: " + error);
     }
@@ -37,7 +39,7 @@ export async function createUser(
       username,
       is_bot,
       language_code,
-      telegram_id: id,
+      telegram_id: telegram_id,
       email: "",
     };
 
@@ -231,6 +233,7 @@ export const checkUsernameCodes = async (
   username: string,
 ): Promise<CheckUsernameCodesResult> => {
   try {
+    console.log("checkUsernameCodes username🤩", username);
     const { data: userData, error: userError } = await supabase
       .from("users")
       .select("*")
@@ -242,7 +245,7 @@ export const checkUsernameCodes = async (
       .eq("username", username);
 
     if (roomsError) {
-      throw new Error("Error checkUsernameCodes: " + roomsError);
+      throw new Error("(246)Error checkUsernameCodes: " + roomsError);
     }
     const invitation_codes = rooms && rooms[0]?.codes;
 
@@ -262,7 +265,7 @@ export const checkUsernameCodes = async (
       inviter_user_id: userData ? userData[0].user_id : "",
     };
   } catch (error) {
-    throw new Error("Error checkUsernameCodes: " + error);
+    throw new Error("(266)Error checkUsernameCodes: " + error);
   }
 };
 

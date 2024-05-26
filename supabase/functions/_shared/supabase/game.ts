@@ -51,3 +51,29 @@ export async function gameStep({ roll, response, telegram_id }: GameStepResultT)
   return stepData;
 }
 
+export async function getLastStep(user_id: string) {
+  const { data: lastStepData, error: lastStepError } = await supabase
+    .from("game")
+    .select("*")
+    .eq("user_id", user_id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (lastStepError) {
+    throw new Error(lastStepError.message);
+  }
+
+  if (lastStepData.length === 0) {
+    return {
+      "loka": 1,
+      "direction": "step 🚶🏼",
+      "consecutive_sixes": 0,
+      "position_before_three_sixes": 0,
+      "is_finished": false
+    }
+  }
+
+  return lastStepData;
+}
+
