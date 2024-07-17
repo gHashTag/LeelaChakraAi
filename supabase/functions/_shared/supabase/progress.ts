@@ -137,9 +137,11 @@ export async function getQuestion(
     const { data, error }: SupabaseResponse<any> = await supabase
       .from(language)
       .select("*")
-      .eq("lesson_number", lesson_number)
-      .eq("subtopic", subtopic);
+      .eq("lesson_number", Number(lesson_number))
+      .eq("subtopic", Number(subtopic));
 
+      console.log(data, "data getQuestion")
+      console.log(error, "error getQuestion")
     if (error) {
       throw new Error("Error getQuestion: " + error.message);
     }

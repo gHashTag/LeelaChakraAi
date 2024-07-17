@@ -21,6 +21,7 @@ export type SupabaseUser = TUser & {
   display_name?: string | null;
   position?: string | null;
   designation?: string | null;
+  isWrite?: boolean | null;
 };
 
 export interface UserWithFullName {
@@ -303,3 +304,6 @@ export interface GameStepResultT {
   telegram_id: string;
 }
 
+export interface plansType {
+  [key: string]: string;
+}

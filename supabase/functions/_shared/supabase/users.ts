@@ -60,6 +60,26 @@ export async function createUser(
   }
 }
 
+export async function updateUser(telegram_id: string, updates: any): Promise<void> {
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .update(updates)
+      .eq("telegram_id", telegram_id)
+      .select("*"); // Добавлено .select("*")
+
+    if (error) {
+      throw new Error("Error updating user: " + error.message);
+    }
+
+    if (!data) {
+      throw new Error("No data returned from update");
+    }
+  } catch (error) {
+    throw new Error("Error updateUser: " + error);
+  }
+}
+
 export const getSupabaseUser = async (
   username: string,
 ): Promise<SupabaseUser | null > => {
