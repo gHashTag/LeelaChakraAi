@@ -20,7 +20,7 @@ import {
   updateProgress,
   updateResult,
 } from "../_shared/supabase/progress.ts";
-import { createUser, getUid, updateUser } from "../_shared/supabase/users.ts";
+import { createUser, getUid, getUser, updateUser } from "../_shared/supabase/users.ts";
 import { pathIncrement } from "../path-increment.ts";
 import { gameStep, getLastStep, updateHistory, getPlan } from "../_shared/supabase/game.ts";
 import { getSupabaseUser } from "../_shared/supabase/users.ts";
@@ -89,10 +89,10 @@ leelaChakraBot.command("step", async (ctx) => {
   await ctx.replyWithChatAction("typing");
   const isRu = ctx.from?.language_code === "ru";
  
-  ctx.reply(isRu ? "Чтобы сделать шаг, нажмите кнопку ниже!" : "To make a step, click the button below!", {
+  ctx.reply(isRu ? "Чтобы сделать шаг, нажмите на кубик!" : "To make a move, click on the cube!", {
     reply_markup: {
       inline_keyboard: [
-        [{text: isRu ? "Сделать шаг" : "Make a step", callback_data: "make_step"}]
+        [{text: "🎲", callback_data: "make_step"}]
       ]
     }
   })
@@ -235,24 +235,6 @@ leelaChakraBot.on("message:successful_payment", async (ctx) => {
   return;
 });
 
-leelaChakraBot.on("message:dice", async (ctx) => {
-  const isRu = ctx.from?.language_code === "ru";
-  const roll = ctx.message.dice.value; // Получаем значение кубика
-  
-  if (!ctx.from?.id) throw new Error("Telegram id not found")
-    const user_id = await getUid(ctx.from?.username || "");
-    if (!user_id) throw new Error("User not found");
-    const lastStep = await getLastStep(user_id.toString())
-    const step = await gameStep({roll: roll, response: [lastStep], telegram_id: ctx.from?.id.toString()})
-    console.log("step", step)
-    if (!ctx.from.language_code) throw new Error("Language code not found")
-    const plan = await getPlan(step.loka, ctx.from.language_code)
-  console.log(plan, "plan")
-    await ctx.reply(isRu ? `${step.direction} Ваш план: ${step.loka}\n\n${plan}\n\nОтветьте на сообщение, чтобы написать репорт.` : `${step.direction} Your plan: ${step.loka}\n\n${plan}\n\nReply to the message to write report.`, {reply_markup: {force_reply: true}})
-    await updateUser(ctx.from.id.toString(), {isWrite: true})
-    return
-});
-
 leelaChakraBot.on("message:text", async (ctx) => {
   console.log(ctx)
   try {
@@ -269,12 +251,12 @@ leelaChakraBot.on("message:text", async (ctx) => {
       if (ctx.message.reply_to_message) {
         if (ctx.message.reply_to_message.text?.includes("Ваш план") || ctx.message.reply_to_message.text?.includes("Your plan"))
           {
-            const isWrite = (await getSupabaseUser(ctx.from.username))?.isWrite
+            const isWrite = (await getSupabaseUser(ctx.from?.id.toString()))?.isWrite
             const step_callback = {
             reply_markup: {
               inline_keyboard: [[
                 {
-                  text: isRu ? "Сделать ход" : "Make a step",
+                  text: "🎲",
                   callback_data: `make_step`,
                 }
               ]]
@@ -314,10 +296,34 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
 
   if (callbackData.startsWith("make_step")){
     console.log("step...");
-   
-    await ctx.reply(isRu ? "Для того чтобы сделать ход, отправьте кубик." : "To make a step, send a dice.")
-    await ctx.reply("🎲")
-    return
+    const isRu = ctx.from?.language_code === "ru";
+    const roll = Math.floor(Math.random() * 6) + 1; // Получаем значение кубика от 1 до 6
+    
+    const user = await getSupabaseUser(ctx.from?.id.toString())
+    if (!user) return
+    if (user.isWrite) {
+      console.log("user.isWrite 305", user.isWrite)
+      const user_id = await getUid(ctx.from?.username || "")
+      if (!user_id) throw new Error("User not found")
+      const step = await getLastStep(user_id.toString())
+      console.log("step", step)
+      if (!step) return
+      const plan = await getPlan(step.loka, isRu ? "ru" : "en")
+      await ctx.reply(isRu ? `${step.direction} Ваш план: ${step.loka}\n\n${plan}\n\nОтветьте на сообщение, чтобы написать репорт.` : `${step.direction} Your plan: ${step.loka}\n\n${plan}\n\nReply to the message to write report.`, {reply_markup: {force_reply: true}})
+      return
+    }
+    if (!ctx.from?.id) throw new Error("Telegram id not found")
+      const user_id = await getUid(ctx.from?.username || "");
+      if (!user_id) throw new Error("User not found");
+      const lastStep = await getLastStep(user_id.toString())
+      const step = await gameStep({roll: roll, response: [lastStep], telegram_id: ctx.from?.id.toString()})
+      console.log("step", step)
+      if (!ctx.from.language_code) throw new Error("Language code not found")
+      const plan = await getPlan(step.loka, ctx.from.language_code)
+    console.log(plan, "plan")
+      await ctx.reply(isRu ? `${step.direction} Ваш план: ${step.loka}\n\n${plan}\n\nОтветьте на сообщение, чтобы написать репорт.` : `${step.direction} Your plan: ${step.loka}\n\n${plan}\n\nReply to the message to write report.`, {reply_markup: {force_reply: true}})
+      await updateUser(ctx.from.id.toString(), {isWrite: true})
+      return
   }
 
   if (callbackData.startsWith("buy")){

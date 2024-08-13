@@ -81,13 +81,13 @@ export async function updateUser(telegram_id: string, updates: any): Promise<voi
 }
 
 export const getSupabaseUser = async (
-  username: string,
-): Promise<SupabaseUser | null > => {
+  telegram_id: string,
+): Promise<SupabaseUser | null> => {
   try {
     const response = await supabase
       .from("users")
       .select("*")
-      .eq("username", username)
+      .eq("telegram_id", telegram_id)
       .single();
 
     if (response.error && response.error.code === "PGRST116") {

@@ -56,14 +56,16 @@ export async function gameStep({ roll, response, telegram_id }: GameStepResultT)
 export async function getLastStep(user_id: string): Promise<GameStep> {
   // Проверить, существует ли user_id в таблице game
   const { data: userExists, error: userExistsError } = await supabase
-    .from("game")
-    .select("user_id")
-    .eq("user_id", user_id)
-    .single();
-
+  .from("game")
+  .select("*")
+  .eq("user_id", user_id)
+  .order("created_at", { ascending: false })
+  .limit(1)
+  .single();
+  
   if (userExistsError) {
-    // Если user_id не найден, вернуть дефолтные данные
-    if (userExistsError.code === "PGRST116") { // Код ошибки для "No rows found"
+    console.log(userExistsError, "userExistsError")
+    if (!userExists) {
       return {
         "loka": 1,
         "direction": "step 🚶🏼",
@@ -72,7 +74,6 @@ export async function getLastStep(user_id: string): Promise<GameStep> {
         "is_finished": false
       };
     }
-    throw new Error(userExistsError.message);
   }
 
   // Если user_id найден, получить последний шаг
@@ -101,16 +102,18 @@ export async function getLastStep(user_id: string): Promise<GameStep> {
 }
 
 export async function updateHistory(user_id: string, username: string, language_code: string, content: string) {
-  // Занести текст в нейросеть и получить ответ
+  const language = language_code === "ru" ? "ru" : "en"
+  const lastStep = await getLastStep(user_id);
+  const lastPlan = await getPlan(lastStep.loka, language)
+  const query = `the user must analyze this text: ${lastPlan}
+  here is his analysis of the text: ${content}
+  you need to respond in his language to his text analysis.`
   const { ai_content } = await getAiFeedbackFromSupabase({
-    query: content,
+    query: query,
     username,
     language_code,
   });
-
   console.log(ai_content, "ai_content")
-  // Получить последнюю строку от user_id в таблице game
-  const lastStep = await getLastStep(user_id);
   console.log(lastStep, "lastStep")
   // Внести данные в таблицу history
   const { data, error } = await supabase
@@ -132,9 +135,11 @@ export async function updateHistory(user_id: string, username: string, language_
 
 export async function getPlan(loka: number, language_code: string) {
   // Получить строку данных из таблицы по loka
+  console.log(language_code, "language_code")
+  const language = language_code === "ru" ? "ru" : "en"
   const { data, error }: any = await supabase
     .from("plans")
-    .select(`short_desc_${language_code}`)
+    .select(`short_desc_${language}`)
     .eq("loka", loka)
     .single();
 
