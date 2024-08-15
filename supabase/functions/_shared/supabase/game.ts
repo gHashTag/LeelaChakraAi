@@ -139,7 +139,7 @@ export async function getPlan(loka: number, language_code: string) {
   const language = language_code === "ru" ? "ru" : "en"
   const { data, error }: any = await supabase
     .from("plans")
-    .select(`short_desc_${language}`)
+    .select(`short_desc_${language}, image`)
     .eq("loka", loka)
     .single();
 
@@ -148,5 +148,8 @@ export async function getPlan(loka: number, language_code: string) {
   }
 
   console.log(data, "data")
-  return data[`short_desc_${language_code}`]
+  return {
+    short_desc: data[`short_desc_${language_code}`],
+    image: data.image
+  }
 }

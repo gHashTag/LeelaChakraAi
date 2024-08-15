@@ -15,6 +15,7 @@ export type SupabaseUser = TUser & {
   is_bot?: boolean | null;
   language_code?: string | null;
   telegram_id?: number | null;
+  chat_id?: number | null;
   email?: string | null;
   created_at?: Date;
   role?: string | null;

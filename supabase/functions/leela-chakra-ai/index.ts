@@ -16,20 +16,27 @@ import {
   getCorrects,
   getLastCallback,
   getQuestion,
-  resetProgress,
   updateProgress,
   updateResult,
 } from "../_shared/supabase/progress.ts";
-import { createUser, getUid, getUser, updateUser } from "../_shared/supabase/users.ts";
+import { createUser, getUid, updateUser, checkAndUpdate, getSupabaseUser, getLanguage, setLanguage } from "../_shared/supabase/users.ts";
 import { pathIncrement } from "../path-increment.ts";
 import { gameStep, getLastStep, updateHistory, getPlan } from "../_shared/supabase/game.ts";
-import { getSupabaseUser } from "../_shared/supabase/users.ts";
 import { sendPaymentInfo } from "../_shared/supabase/payments.ts";
+import { checkAndReturnUser } from "../_shared/supabase/users.ts";
 
 // Setup type definitions for built-in Supabase Runtime APIs
 /// <reference types="https://esm.sh/@supabase/functions-js/src/edge-runtime.d.ts" />
 
 console.log("Hello from LeelaChakra Ai!");
+
+const isRu = async (ctx: Context) => {
+	if (!ctx.from) throw new Error("User not found");
+	const language = await getLanguage(ctx.from?.id.toString());
+	if (!language) return ctx.from.language_code === "ru"
+	return language === "ru";
+}
+
 await leelaChakraBot.api.setMyCommands([
   {
     command: "/start",
@@ -58,6 +65,7 @@ leelaChakraBot.command("start", async (ctx: Context) => {
   if (!ctx.from) return;
   await ctx.replyWithChatAction("typing"); // Отправка действия набора сообщения в чате
   console.log("🥀create user:", ctx.from);
+  const lang = await isRu(ctx)
   await createUser({
     telegram_id: ctx.from.id,
     first_name: ctx.from.first_name,
@@ -66,17 +74,16 @@ leelaChakraBot.command("start", async (ctx: Context) => {
     is_bot: ctx.from.is_bot,
     language_code: ctx.from.language_code,
   });
-  const isRu = ctx.from?.language_code === "ru";
   await ctx.reply(
-    isRu
+    await lang
       ? `🔮 Добро пожаловать в игру самопознания "Лила Чакра", ${ctx.from?.first_name}! 🔮\n\n🌟 В этой увлекательной игре ты отправишься в захватывающее путешествие через чакры, открывая тайны и возможности, скрытые внутри тебя.\n\n💫 Готов ли ты погрузиться в мир духовного роста, встретить свое истинное "Я" и раскрыть потенциал своих энергетических центров? С "Лилой Чакра" ты сможешь узнать глубже себя, обрести гармонию и понимание своего внутреннего мира.\n\n🔮 Пусть каждое испытание в игре принесет тебе новое понимание, мудрость и вдохновение. Дерзай и открой двери своего подсознания, исследуя таинственные чакры и обретая внутреннюю гармонию!`
       : `🔮 Welcome to the Leela Chakra Self-Discovery Game, ${ctx.from?.first_name}! 🔮\n\n🌟 In this exciting game, you will embark on an exciting journey through the chakras, discovering the secrets and possibilities hidden within you.\n\n💫 Are you ready to dive into the world of spiritual growth, meet your true self and unlock the potential of your energy centers? With "Leela Chakra" you can learn more about yourself, find harmony and understanding of your inner world.\n\n🔮 May each challenge in the game bring you new insights, wisdom and inspiration. Dare to open the doors of your subconscious mind, exploring the mysterious chakras and finding inner harmony!`,
     {
       reply_markup: {
         inline_keyboard: [
           [
-            {text: isRu ? "Начать тест" : "Start test", callback_data: "leelachakra_01_01"},
-            {text: isRu ? "Начать игру" : "Start game", callback_data: "make_step"}
+            {text: lang ? "Начать тест" : "Start test", callback_data: "leelachakra_01_01"},
+            {text: lang ? "Начать игру" : "Start game", callback_data: "make_step"}
           ],
         ],
       },
@@ -86,24 +93,46 @@ leelaChakraBot.command("start", async (ctx: Context) => {
 
 leelaChakraBot.command("step", async (ctx) => {
   console.log("step");
+  await checkAndUpdate(ctx)
   await ctx.replyWithChatAction("typing");
-  const isRu = ctx.from?.language_code === "ru";
+  const lang = await isRu(ctx)
  
-  ctx.reply(isRu ? "Чтобы сделать шаг, нажмите на кубик!" : "To make a move, click on the cube!", {
+  await ctx.reply(lang ? "Чтобы сделать шаг, нажмите на кубик!" : "To make a move, click on the cube!", {
     reply_markup: {
       inline_keyboard: [
-        [{text: "🎲", callback_data: "make_step"}]
-      ]
+        [{text: "🎲", callback_data: "make_step"}
+        ],
+        [{text: "Gameboard", web_app: {url: `https://leela-chakra-nextjs.vercel.app/gameboard`}}
+        ]
+      ],
     }
   })
+  return
+});
+
+leelaChakraBot.command("language", async (ctx) => {
+	await checkAndUpdate(ctx)
+	await ctx.replyWithChatAction("typing");
+	if (!ctx.from) throw new Error("User not found");
+	const { user } = await checkAndReturnUser(ctx.from?.id.toString());
+	const lang = await isRu(ctx)
+	user && await ctx.reply(lang ? "🌏 Выберите язык" : "🌏 Select language", {
+		reply_markup: {
+			inline_keyboard: [
+				[{ text: lang ? "🇷🇺 Русский" : "🇷🇺 Russian", callback_data: "select_russian" }],
+				[{ text: lang ? "🇬🇧 English" : "🇬🇧 English", callback_data: "select_english" }],
+			],
+		},
+	})
 });
 
 leelaChakraBot.command("course", async (ctx) => {
   console.log("course");
+  await checkAndUpdate(ctx)
   const theme = "leelachakra"
   await ctx.replyWithChatAction("typing");
   if (!ctx.from) throw new Error("User not found");
-  const lang = ctx.from?.language_code === "ru";
+  const lang = await isRu(ctx)
   if (!theme) {
     await ctx.reply(lang ? "Тема не найдена." : "Theme not found.");
     return;
@@ -177,7 +206,8 @@ leelaChakraBot.command("course", async (ctx) => {
 });
 
 leelaChakraBot.command("buy", async (ctx) => {
-  const lang = ctx.from?.language_code === "ru";
+  await checkAndUpdate(ctx)
+  const lang = await isRu(ctx)
   await ctx.reply(lang ? `<b>Базовый Онлайн - 432⭐ в месяц</b>
   - Онлайн игра
   - Самостоятельное обучение в боте с доступом к обучающим материалам
@@ -224,7 +254,8 @@ leelaChakraBot.on("pre_checkout_query", (ctx) => {
 });
 
 leelaChakraBot.on("message:successful_payment", async (ctx) => {
-  const lang = ctx.from?.language_code === "ru";
+  await checkAndUpdate(ctx)
+  const lang = await isRu(ctx)
   if (!ctx.from?.username) throw new Error("User not found")
   const textToPost = "🙏🏻 Namaste"
   await ctx.reply(lang ? "🤝 Спасибо за покупку!" : "🤝 Thank you for the purchase!");
@@ -236,20 +267,29 @@ leelaChakraBot.on("message:successful_payment", async (ctx) => {
 });
 
 leelaChakraBot.on("message:text", async (ctx) => {
+  await checkAndUpdate(ctx)
   console.log(ctx)
   try {
     await ctx.replyWithChatAction("typing");
     const query = ctx?.message?.text;
-    const isRu = ctx.from?.language_code === "ru";
-    const language_code = ctx.from.language_code || "en";
+    const lang = await isRu(ctx)
+    const language_code = await getLanguage(ctx.from?.id.toString())
+    if (!language_code) throw new Error("Language code not found")
 
     if (query) {
       if (!ctx.from.username) {
-        await ctx.reply(isRu ? "Вы ещё не зарегистрированы. Зарегистрируйтесь, чтобы пользоваться этим ботом." : "You are not registered yet. Please, register to use this bot.");
+        await ctx.reply(lang ? "Вы ещё не зарегистрированы. Зарегистрируйтесь, чтобы пользоваться этим ботом." : "You are not registered yet. Please, register to use this bot.");
         throw new Error("User is not registered yet");
       }
+      
       if (ctx.message.reply_to_message) {
-        if (ctx.message.reply_to_message.text?.includes("Ваш план") || ctx.message.reply_to_message.text?.includes("Your plan"))
+        const replyMessageText = ctx.message.reply_to_message.caption ? ctx.message.reply_to_message.caption : ctx.message.reply_to_message.text
+        if (!replyMessageText) return
+        if (replyMessageText.length < 100) {
+          await ctx.reply(lang ? "Репорт должен быть <b>длиннее 100 символов</b>." : "Report must be <b>longer than 100 characters</b>.", {parse_mode: "HTML"})
+          return
+        }
+        if (replyMessageText.includes("Ваш план") || replyMessageText.includes("Your plan"))
           {
             const isWrite = (await getSupabaseUser(ctx.from?.id.toString()))?.isWrite
             const step_callback = {
@@ -258,11 +298,16 @@ leelaChakraBot.on("message:text", async (ctx) => {
                 {
                   text: "🎲",
                   callback_data: `make_step`,
-                }
-              ]]
+                },
+              ],
+               [{text: "Gameboard", web_app: {url: `https://leela-chakra-nextjs.vercel.app/gameboard`}}
+        ]]
             }
           }
-            if (!isWrite) ctx.reply(isRu ? "Вы уже ответили на этот план." : "You already answered on this plan.", step_callback)
+            if (!isWrite){
+               await ctx.reply(lang ? "Вы уже ответили на этот план." : "You already answered on this plan.", step_callback) 
+               return
+            }
             if (!ctx.from.username) throw new Error("User not found")
             const user_id = await getUid(ctx.from.username)
             if (!user_id) throw new Error("User not found")
@@ -289,14 +334,23 @@ leelaChakraBot.on("message:text", async (ctx) => {
 leelaChakraBot.on("callback_query:data", async (ctx) => {
   await ctx.replyWithChatAction("typing");
   console.log(ctx);
+  await checkAndUpdate(ctx)
   const callbackData = ctx.callbackQuery.data;
   const isHaveAnswer = callbackData.split("_").length === 4;
-  const isRu = ctx.from?.language_code === "ru";
-  const lang = ctx.from?.language_code === "ru";
+  const lang = await isRu(ctx)
+
+  if (callbackData === "select_russian") {
+		await setLanguage(ctx.from?.id.toString(), "ru");
+		await ctx.reply("🇷🇺 Выбран русский");
+	}
+	if (callbackData === "select_english") {
+		await setLanguage(ctx.from?.id.toString(), "en");
+		await ctx.reply("🇬🇧 English selected");
+	}
 
   if (callbackData.startsWith("make_step")){
     console.log("step...");
-    const isRu = ctx.from?.language_code === "ru";
+    const lang = await isRu(ctx)
     const roll = Math.floor(Math.random() * 6) + 1; // Получаем значение кубика от 1 до 6
     
     const user = await getSupabaseUser(ctx.from?.id.toString())
@@ -308,8 +362,14 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
       const step = await getLastStep(user_id.toString())
       console.log("step", step)
       if (!step) return
-      const plan = await getPlan(step.loka, isRu ? "ru" : "en")
-      await ctx.reply(isRu ? `${step.direction} Ваш план: ${step.loka}\n\n${plan}\n\nОтветьте на сообщение, чтобы написать репорт.` : `${step.direction} Your plan: ${step.loka}\n\n${plan}\n\nReply to the message to write report.`, {reply_markup: {force_reply: true}})
+      const plan = await getPlan(step.loka, lang ? "ru" : "en")
+      const text = lang ? `${step.direction} Ваш план: ${step.loka}\n\n${plan.short_desc}\n\nОтветьте на сообщение, чтобы написать репорт.` : `${step.direction} Your plan: ${step.loka}\n\n${plan}\n\nReply to the message to write report.`
+      const options = {reply_markup: {force_reply: true, inline_keyboard: [[{text: "Gameboard", web_app: {url: `https://leela-chakra-nextjs.vercel.app/gameboard`}}]]}}
+      if (plan.image) {
+        await ctx.replyWithPhoto(plan.image, {caption: text, ...options})
+        return
+      }
+      await ctx.reply(text, options)
       return
     }
     if (!ctx.from?.id) throw new Error("Telegram id not found")
@@ -321,7 +381,13 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
       if (!ctx.from.language_code) throw new Error("Language code not found")
       const plan = await getPlan(step.loka, ctx.from.language_code)
     console.log(plan, "plan")
-      await ctx.reply(isRu ? `${step.direction} Ваш план: ${step.loka}\n\n${plan}\n\nОтветьте на сообщение, чтобы написать репорт.` : `${step.direction} Your plan: ${step.loka}\n\n${plan}\n\nReply to the message to write report.`, {reply_markup: {force_reply: true}})
+    const text = lang ? `${step.direction} Ваш план: ${step.loka}\n\n${plan.short_desc}\n\nОтветьте на сообщение, чтобы написать репорт.` : `${step.direction} Your plan: ${step.loka}\n\n${plan}\n\nReply to the message to write report.`
+      const options = {reply_markup: {force_reply: true, inline_keyboard: [[{text: "Gameboard", web_app: {url: `https://leela-chakra-nextjs.vercel.app/gameboard`}}]]}}
+      if (plan.image) {
+        await ctx.replyWithPhoto(plan.image, {caption: text, ...options})
+        return
+      }
+      await ctx.reply(text, options)
       await updateUser(ctx.from.id.toString(), {isWrite: true})
       return
   }
@@ -329,8 +395,8 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
   if (callbackData.startsWith("buy")){
     if (callbackData.endsWith("basic")){
       await ctx.replyWithInvoice(
-        isRu ? "Базовый Онлайн" : "Basic Online",
-        isRu ? "Вы получите подписку уровня 'Базовый Онлайн'" : "You will receive a subscription to the 'Basic Online' level",
+        lang ? "Базовый Онлайн" : "Basic Online",
+        lang ? "Вы получите подписку уровня 'Базовый Онлайн'" : "You will receive a subscription to the 'Basic Online' level",
         "basic",
         "", // Оставьте пустым для цифровых товаров
         "XTR", // Используйте валюту Telegram Stars
@@ -340,8 +406,8 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
     }
     if (callbackData.endsWith("group")){
       await ctx.replyWithInvoice(
-        isRu ? "Групповая Сессия" : "Group Session",
-        isRu ? "Вы получите подписку уровня 'Базовый Онлайн'" : "You will receive a subscription to the 'Basic Online' level",
+        lang ? "Групповая Сессия" : "Group Session",
+        lang ? "Вы получите подписку уровня 'Базовый Онлайн'" : "You will receive a subscription to the 'Basic Online' level",
         "group",
         "", // Оставьте пустым для цифровых товаров
         "XTR", // Используйте валюту Telegram Stars
@@ -351,8 +417,8 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
     }
     if (callbackData.endsWith("individual")){
       await ctx.replyWithInvoice(
-        isRu ? "Индивидуальная Сессия" : "Individual Session",
-        isRu ? "Вы получите подписку уровня 'Индивидуальная Сессия'" : "You will receive a subscription to the 'Individual Session' level",
+        lang ? "Индивидуальная Сессия" : "Individual Session",
+        lang ? "Вы получите подписку уровня 'Индивидуальная Сессия'" : "You will receive a subscription to the 'Individual Session' level",
         "individual",
         "", // Оставьте пустым для цифровых товаров
         "XTR", // Используйте валюту Telegram Stars
