@@ -60,6 +60,36 @@ export async function createUser(
   }
 }
 
+export async function checkAndUpdate(ctx: any): Promise<void> {
+  try {
+    const { first_name, last_name, username, chat_id } = ctx.from;
+    const telegram_id = ctx.from.id.toString()
+    const { user } = await checkAndReturnUser(telegram_id);
+
+    if (!user) return;
+
+    const updates: any = {};
+    if (user.first_name !== first_name) updates.first_name = first_name;
+    if (user.last_name !== last_name) updates.last_name = last_name;
+    if (user.username !== username) updates.username = username;
+    if (user.chat_id !== chat_id) updates.chat_id = chat_id;
+
+    if (Object.keys(updates).length > 0) {
+      console.log(updates, "updates")
+      const { error } = await supabase
+        .from("users")
+        .update(updates)
+        .eq("telegram_id", telegram_id);
+
+      if (error) {
+        throw new Error("Error updating user: " + error.message);
+      }
+    }
+  } catch (error) {
+    throw new Error("Error checkAndUpdate: " + error);
+  }
+}
+
 export async function updateUser(telegram_id: string, updates: any): Promise<void> {
   try {
     const { data, error } = await supabase

@@ -22,8 +22,13 @@ import {
 } from "../_shared/supabase/progress.ts";
 import { createUser, getUid, updateUser } from "../_shared/supabase/users.ts";
 import { pathIncrement } from "../path-increment.ts";
-import { gameStep, getLastStep, updateHistory, getPlan } from "../_shared/supabase/game.ts";
-import { getSupabaseUser } from "../_shared/supabase/users.ts";
+import {
+  gameStep,
+  getLastStep,
+  getPlan,
+  updateHistory,
+} from "../_shared/supabase/game.ts";
+import { checkAndUpdate, getSupabaseUser } from "../_shared/supabase/users.ts";
 import { sendPaymentInfo } from "../_shared/supabase/payments.ts";
 
 // Setup type definitions for built-in Supabase Runtime APIs
@@ -46,7 +51,7 @@ await leelaChakraBot.api.setMyCommands([
   {
     command: "/buy",
     description: "Buy a plan",
-  }
+  },
   // {
   //   command: "/room",
   //   description: "Create a room",
@@ -54,6 +59,7 @@ await leelaChakraBot.api.setMyCommands([
 ]);
 
 leelaChakraBot.command("start", async (ctx: Context) => {
+  await checkAndUpdate(ctx);
   console.log("start");
   if (!ctx.from) return;
   await ctx.replyWithChatAction("typing"); // Отправка действия набора сообщения в чате
@@ -75,8 +81,14 @@ leelaChakraBot.command("start", async (ctx: Context) => {
       reply_markup: {
         inline_keyboard: [
           [
-            {text: isRu ? "Начать тест" : "Start test", callback_data: "leelachakra_01_01"},
-            {text: isRu ? "Начать игру" : "Start game", callback_data: "make_step"}
+            {
+              text: isRu ? "Начать тест" : "Start test",
+              callback_data: "leelachakra_01_01",
+            },
+            {
+              text: isRu ? "Начать игру" : "Start game",
+              callback_data: "make_step",
+            },
           ],
         ],
       },
@@ -85,22 +97,32 @@ leelaChakraBot.command("start", async (ctx: Context) => {
 });
 
 leelaChakraBot.command("step", async (ctx) => {
+  await checkAndUpdate(ctx);
   console.log("step");
   await ctx.replyWithChatAction("typing");
   const isRu = ctx.from?.language_code === "ru";
- 
-  ctx.reply(isRu ? "Чтобы сделать шаг, нажмите кнопку ниже!" : "To make a step, click the button below!", {
-    reply_markup: {
-      inline_keyboard: [
-        [{text: isRu ? "Сделать шаг" : "Make a step", callback_data: "make_step"}]
-      ]
-    }
-  })
+
+  ctx.reply(
+    isRu
+      ? "Чтобы сделать шаг, нажмите кнопку ниже!"
+      : "To make a step, click the button below!",
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [{
+            text: isRu ? "Сделать шаг" : "Make a step",
+            callback_data: "make_step",
+          }],
+        ],
+      },
+    },
+  );
 });
 
 leelaChakraBot.command("course", async (ctx) => {
+  await checkAndUpdate(ctx);
   console.log("course");
-  const theme = "leelachakra"
+  const theme = "leelachakra";
   await ctx.replyWithChatAction("typing");
   if (!ctx.from) throw new Error("User not found");
   const lang = ctx.from?.language_code === "ru";
@@ -108,77 +130,83 @@ leelaChakraBot.command("course", async (ctx) => {
     await ctx.reply(lang ? "Тема не найдена." : "Theme not found.");
     return;
   }
-    try {
-      const questionContext = {
-        lesson_number: 1,
-        subtopic: 1,
-      };
+  try {
+    const questionContext = {
+      lesson_number: 1,
+      subtopic: 1,
+    };
 
-      console.log(questionContext, "questionContext")
-      const questions = await getQuestion({
-        ctx: questionContext,
-        language: theme,
-      });
-      if (questions.length > 0) {
-        const {
-          topic: ruTopic,
-          image_lesson_url,
-          topic_en: enTopic,
-          url
-        } = questions[0];
+    console.log(questionContext, "questionContext");
+    const questions = await getQuestion({
+      ctx: questionContext,
+      language: theme,
+    });
+    if (questions.length > 0) {
+      const {
+        topic: ruTopic,
+        image_lesson_url,
+        topic_en: enTopic,
+        url,
+      } = questions[0];
 
-        const user_id = await getUid(ctx.from?.username || "");
-        if (!user_id) {
-          ctx.reply(lang ? "Вы не зарегестрированы." : "You are not registered.");
-          return;
-        }
-        const topic = lang ? ruTopic : enTopic;
-        const allAnswers = await getCorrects({
-          user_id: user_id.toString(),
-          language: "all",
-        });
-        // Формируем сообщение
-        const messageText =
-          `${topic}\n\n<i><u>${lang ? "Теперь мы предлагаем вам закрепить полученные знания." : "Now we are offering you to reinforce the acquired knowledge."}</u></i>\n\n<b>${lang ? "Total: " : "Total: "}${allAnswers} $IGLA</b>`;
-
-        // Формируем кнопки
-        const inlineKeyboard = [
-          [{
-            text: lang ? "Перейти к вопросу" : "Go to the question",
-            callback_data: `${theme}_01_01`,
-          }],
-        ];
-
-        if (url && lang) {
-          console.log(url, "url");
-          await ctx.replyWithVideoNote(url);
-        }
-        if (image_lesson_url) {
-          // Отправляем сообщение
-          await ctx.replyWithPhoto(image_lesson_url || "", {
-            caption: messageText,
-            parse_mode: "HTML",
-            reply_markup: { inline_keyboard: inlineKeyboard },
-          });
-          return;
-        } else {
-          await ctx.reply(messageText, {
-            parse_mode: "HTML",
-            reply_markup: { inline_keyboard: inlineKeyboard },
-          });
-          return;
-        }
-      } else {
-        await ctx.reply(lang ? "Вопросы не найдены." : "No questions found.");
+      const user_id = await getUid(ctx.from?.username || "");
+      if (!user_id) {
+        ctx.reply(lang ? "Вы не зарегестрированы." : "You are not registered.");
+        return;
       }
-    } catch (error) {
-      console.error(error);
+      const topic = lang ? ruTopic : enTopic;
+      const allAnswers = await getCorrects({
+        user_id: user_id.toString(),
+        language: "all",
+      });
+      // Формируем сообщение
+      const messageText = `${topic}\n\n<i><u>${
+        lang
+          ? "Теперь мы предлагаем вам закрепить полученные знания."
+          : "Now we are offering you to reinforce the acquired knowledge."
+      }</u></i>\n\n<b>${lang ? "Total: " : "Total: "}${allAnswers} $IGLA</b>`;
+
+      // Формируем кнопки
+      const inlineKeyboard = [
+        [{
+          text: lang ? "Перейти к вопросу" : "Go to the question",
+          callback_data: `${theme}_01_01`,
+        }],
+      ];
+
+      if (url && lang) {
+        console.log(url, "url");
+        await ctx.replyWithVideoNote(url);
+      }
+      if (image_lesson_url) {
+        // Отправляем сообщение
+        await ctx.replyWithPhoto(image_lesson_url || "", {
+          caption: messageText,
+          parse_mode: "HTML",
+          reply_markup: { inline_keyboard: inlineKeyboard },
+        });
+        return;
+      } else {
+        await ctx.reply(messageText, {
+          parse_mode: "HTML",
+          reply_markup: { inline_keyboard: inlineKeyboard },
+        });
+        return;
+      }
+    } else {
+      await ctx.reply(lang ? "Вопросы не найдены." : "No questions found.");
     }
+  } catch (error) {
+    console.error(error);
+  }
 });
 
 leelaChakraBot.command("buy", async (ctx) => {
+  await checkAndUpdate(ctx);
   const lang = ctx.from?.language_code === "ru";
-  await ctx.reply(lang ? `<b>Базовый Онлайн - 432⭐ в месяц</b>
+  await ctx.reply(
+    lang
+      ? `<b>Базовый Онлайн - 432⭐ в месяц</b>
   - Онлайн игра
   - Самостоятельное обучение в боте с доступом к обучающим материалам
   - ИИ гуру ассистент
@@ -194,7 +222,7 @@ leelaChakraBot.command("buy", async (ctx) => {
   - 4 индивидуальных игры с разбором целей
   - Личная поддержка в чате
   - Чек-лист и анализ игрока`
-   : `<b>Basic Online - 432⭐ per month</b>
+      : `<b>Basic Online - 432⭐ per month</b>
    - Online game
    - Self-paced learning in the bot with access to educational materials
    - AI guru assistant
@@ -209,52 +237,80 @@ leelaChakraBot.command("buy", async (ctx) => {
  Everything in the "Basic Online" plan
    - 4 individual games with goal analysis
    - Personal chat support
-   - Checklist and player analysis`, {
-    reply_markup: {
-      inline_keyboard: [[{ text: lang ? "Базовый Онлайн" : "Basic Online", callback_data: "buy_basic" }], [{ text: lang ? "Групповая Сессия" : "Group Session", callback_data: "buy_group" }], [{ text: lang ? "Индивидуальная Сессия" : "Individual Session", callback_data: "buy_individual" }]],
+   - Checklist and player analysis`,
+    {
+      reply_markup: {
+        inline_keyboard: [[{
+          text: lang ? "Базовый Онлайн" : "Basic Online",
+          callback_data: "buy_basic",
+        }], [{
+          text: lang ? "Групповая Сессия" : "Group Session",
+          callback_data: "buy_group",
+        }], [{
+          text: lang ? "Индивидуальная Сессия" : "Individual Session",
+          callback_data: "buy_individual",
+        }]],
+      },
+      parse_mode: "HTML",
     },
-    parse_mode: "HTML",
-  })
+  );
   return;
 });
 
 leelaChakraBot.on("pre_checkout_query", (ctx) => {
-  ctx.answerPreCheckoutQuery(true)
+  ctx.answerPreCheckoutQuery(true);
   return;
 });
 
 leelaChakraBot.on("message:successful_payment", async (ctx) => {
+  await checkAndUpdate(ctx);
   const lang = ctx.from?.language_code === "ru";
-  if (!ctx.from?.username) throw new Error("User not found")
-  const textToPost = "🙏🏻 Namaste"
-  await ctx.reply(lang ? "🤝 Спасибо за покупку!" : "🤝 Thank you for the purchase!");
-  const user_id = await getUid(ctx.from?.username)
-  if (!user_id) throw new Error("User not found")
-  await sendPaymentInfo(user_id, ctx.message.successful_payment.invoice_payload)
-  await ctx.api.sendMessage("-1002090264748", textToPost)
+  if (!ctx.from?.username) throw new Error("User not found");
+  const textToPost = "🙏🏻 Namaste";
+  await ctx.reply(
+    lang ? "🤝 Спасибо за покупку!" : "🤝 Thank you for the purchase!",
+  );
+  const user_id = await getUid(ctx.from?.username);
+  if (!user_id) throw new Error("User not found");
+  await sendPaymentInfo(
+    user_id,
+    ctx.message.successful_payment.invoice_payload,
+  );
+  await ctx.api.sendMessage("-1002090264748", textToPost);
   return;
 });
 
 leelaChakraBot.on("message:dice", async (ctx) => {
+  await checkAndUpdate(ctx);
   const isRu = ctx.from?.language_code === "ru";
   const roll = ctx.message.dice.value; // Получаем значение кубика
-  
-  if (!ctx.from?.id) throw new Error("Telegram id not found")
-    const user_id = await getUid(ctx.from?.username || "");
-    if (!user_id) throw new Error("User not found");
-    const lastStep = await getLastStep(user_id.toString())
-    const step = await gameStep({roll: roll, response: [lastStep], telegram_id: ctx.from?.id.toString()})
-    console.log("step", step)
-    if (!ctx.from.language_code) throw new Error("Language code not found")
-    const plan = await getPlan(step.loka, ctx.from.language_code)
-  console.log(plan, "plan")
-    await ctx.reply(isRu ? `${step.direction} Ваш план: ${step.loka}\n\n${plan}\n\nОтветьте на сообщение, чтобы написать репорт.` : `${step.direction} Your plan: ${step.loka}\n\n${plan}\n\nReply to the message to write report.`, {reply_markup: {force_reply: true}})
-    await updateUser(ctx.from.id.toString(), {isWrite: true})
-    return
+
+  if (!ctx.from?.id) throw new Error("Telegram id not found");
+  const user_id = await getUid(ctx.from?.username || "");
+  if (!user_id) throw new Error("User not found");
+  const lastStep = await getLastStep(user_id.toString());
+  const step = await gameStep({
+    roll: roll,
+    response: [lastStep],
+    telegram_id: ctx.from?.id.toString(),
+  });
+  console.log("step", step);
+  if (!ctx.from.language_code) throw new Error("Language code not found");
+  const plan = await getPlan(step.loka, ctx.from.language_code);
+  console.log(plan, "plan");
+  await ctx.reply(
+    isRu
+      ? `${step.direction} Ваш план: ${step.loka}\n\n${plan}\n\nОтветьте на сообщение, чтобы написать репорт.`
+      : `${step.direction} Your plan: ${step.loka}\n\n${plan}\n\nReply to the message to write report.`,
+    { reply_markup: { force_reply: true } },
+  );
+  await updateUser(ctx.from.id.toString(), { isWrite: true });
+  return;
 });
 
 leelaChakraBot.on("message:text", async (ctx) => {
-  console.log(ctx)
+  await checkAndUpdate(ctx);
+  console.log(ctx);
   try {
     await ctx.replyWithChatAction("typing");
     const query = ctx?.message?.text;
@@ -263,31 +319,52 @@ leelaChakraBot.on("message:text", async (ctx) => {
 
     if (query) {
       if (!ctx.from.username) {
-        await ctx.reply(isRu ? "Вы ещё не зарегистрированы. Зарегистрируйтесь, чтобы пользоваться этим ботом." : "You are not registered yet. Please, register to use this bot.");
+        await ctx.reply(
+          isRu
+            ? "Вы ещё не зарегистрированы. Зарегистрируйтесь, чтобы пользоваться этим ботом."
+            : "You are not registered yet. Please, register to use this bot.",
+        );
         throw new Error("User is not registered yet");
       }
       if (ctx.message.reply_to_message) {
-        if (ctx.message.reply_to_message.text?.includes("Ваш план") || ctx.message.reply_to_message.text?.includes("Your plan"))
-          {
-            const isWrite = (await getSupabaseUser(ctx.from.username))?.isWrite
-            const step_callback = {
+        if (
+          ctx.message.reply_to_message.text?.includes("Ваш план") ||
+          ctx.message.reply_to_message.text?.includes("Your plan")
+        ) {
+          const isWrite = (await getSupabaseUser(ctx.from.username))?.isWrite;
+          const step_callback = {
             reply_markup: {
               inline_keyboard: [[
                 {
                   text: isRu ? "Сделать ход" : "Make a step",
                   callback_data: `make_step`,
-                }
-              ]]
-            }
+                },
+              ]],
+            },
+          };
+          if (!isWrite) {
+            ctx.reply(
+              isRu
+                ? "Вы уже ответили на этот план."
+                : "You already answered on this plan.",
+              step_callback,
+            );
           }
-            if (!isWrite) ctx.reply(isRu ? "Вы уже ответили на этот план." : "You already answered on this plan.", step_callback)
-            if (!ctx.from.username) throw new Error("User not found")
-            const user_id = await getUid(ctx.from.username)
-            if (!user_id) throw new Error("User not found")
-            const response = await updateHistory(user_id, ctx.from.username || "", language_code, query)
-            await updateUser(ctx.from.id.toString(), {isWrite: false})
-            await ctx.reply(response, {parse_mode: "Markdown", ...step_callback})
-            return
+          if (!ctx.from.username) throw new Error("User not found");
+          const user_id = await getUid(ctx.from.username);
+          if (!user_id) throw new Error("User not found");
+          const response = await updateHistory(
+            user_id,
+            ctx.from.username || "",
+            language_code,
+            query,
+          );
+          await updateUser(ctx.from.id.toString(), { isWrite: false });
+          await ctx.reply(response, {
+            parse_mode: "Markdown",
+            ...step_callback,
+          });
+          return;
         }
       }
       const { ai_content } = await getAiFeedbackFromSupabase({
@@ -295,7 +372,7 @@ leelaChakraBot.on("message:text", async (ctx) => {
         username: ctx.from.username,
         language_code,
       });
-      console.log("💤content", ai_content)
+      console.log("💤content", ai_content);
       await ctx.reply(ai_content, { parse_mode: "Markdown" });
       return;
     }
@@ -305,6 +382,7 @@ leelaChakraBot.on("message:text", async (ctx) => {
 });
 
 leelaChakraBot.on("callback_query:data", async (ctx) => {
+  await checkAndUpdate(ctx);
   await ctx.replyWithChatAction("typing");
   console.log(ctx);
   const callbackData = ctx.callbackQuery.data;
@@ -312,47 +390,57 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
   const isRu = ctx.from?.language_code === "ru";
   const lang = ctx.from?.language_code === "ru";
 
-  if (callbackData.startsWith("make_step")){
+  if (callbackData.startsWith("make_step")) {
     console.log("step...");
-   
-    await ctx.reply(isRu ? "Для того чтобы сделать ход, отправьте кубик." : "To make a step, send a dice.")
-    await ctx.reply("🎲")
-    return
+
+    await ctx.reply(
+      isRu
+        ? "Для того чтобы сделать ход, отправьте кубик."
+        : "To make a step, send a dice.",
+    );
+    await ctx.reply("🎲");
+    return;
   }
 
-  if (callbackData.startsWith("buy")){
-    if (callbackData.endsWith("basic")){
+  if (callbackData.startsWith("buy")) {
+    if (callbackData.endsWith("basic")) {
       await ctx.replyWithInvoice(
         isRu ? "Базовый Онлайн" : "Basic Online",
-        isRu ? "Вы получите подписку уровня 'Базовый Онлайн'" : "You will receive a subscription to the 'Basic Online' level",
+        isRu
+          ? "Вы получите подписку уровня 'Базовый Онлайн'"
+          : "You will receive a subscription to the 'Basic Online' level",
         "basic",
         "", // Оставьте пустым для цифровых товаров
         "XTR", // Используйте валюту Telegram Stars
         [{ label: "Цена", amount: 432 }],
       );
-      return
+      return;
     }
-    if (callbackData.endsWith("group")){
+    if (callbackData.endsWith("group")) {
       await ctx.replyWithInvoice(
         isRu ? "Групповая Сессия" : "Group Session",
-        isRu ? "Вы получите подписку уровня 'Базовый Онлайн'" : "You will receive a subscription to the 'Basic Online' level",
+        isRu
+          ? "Вы получите подписку уровня 'Базовый Онлайн'"
+          : "You will receive a subscription to the 'Basic Online' level",
         "group",
         "", // Оставьте пустым для цифровых товаров
         "XTR", // Используйте валюту Telegram Stars
         [{ label: "Цена", amount: 4754 }],
       );
-      return
+      return;
     }
-    if (callbackData.endsWith("individual")){
+    if (callbackData.endsWith("individual")) {
       await ctx.replyWithInvoice(
         isRu ? "Индивидуальная Сессия" : "Individual Session",
-        isRu ? "Вы получите подписку уровня 'Индивидуальная Сессия'" : "You will receive a subscription to the 'Individual Session' level",
+        isRu
+          ? "Вы получите подписку уровня 'Индивидуальная Сессия'"
+          : "You will receive a subscription to the 'Individual Session' level",
         "individual",
         "", // Оставьте пустым для цифровых товаров
         "XTR", // Используйте валюту Telegram Stars
         [{ label: "Цена", amount: 47975 }],
       );
-      return
+      return;
     }
   }
   if (
@@ -361,14 +449,14 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
   ) {
     if (callbackData === "start_test") {
       try {
-        const theme = callbackData.split("_")[1]
-        console.log(`start_test`)
+        const theme = callbackData.split("_")[1];
+        console.log(`start_test`);
         const questionContext = {
           lesson_number: 1,
           subtopic: 1,
         };
 
-        console.log(theme)
+        console.log(theme);
         const questions = await getQuestion({
           ctx: questionContext,
           language: theme,
@@ -391,8 +479,13 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
             language: "all",
           });
           // Формируем сообщение
-          const messageText =
-            `${topic}\n\n<i><u>${lang ? "Теперь мы предлагаем вам закрепить полученные знания." : "Now we are offering you to reinforce the acquired knowledge."}</u></i>\n\n<b>${lang ? "Total: " : "Total: "}${allAnswers} $IGLA</b>`;
+          const messageText = `${topic}\n\n<i><u>${
+            lang
+              ? "Теперь мы предлагаем вам закрепить полученные знания."
+              : "Now we are offering you to reinforce the acquired knowledge."
+          }</u></i>\n\n<b>${
+            lang ? "Total: " : "Total: "
+          }${allAnswers} $IGLA</b>`;
 
           // Формируем кнопки
           const inlineKeyboard = [
@@ -523,8 +616,10 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
     if (isHaveAnswer) {
       try {
         if (ctx.callbackQuery.from.id) {
-          console.log("editMessageReplyMarkup")
-          await ctx.editMessageReplyMarkup({ reply_markup: { inline_keyboard: [] } }); 
+          console.log("editMessageReplyMarkup");
+          await ctx.editMessageReplyMarkup({
+            reply_markup: { inline_keyboard: [] },
+          });
         }
         const [language, lesson_number, subtopic, answer] = callbackData.split(
           "_",
@@ -538,11 +633,13 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
         if (questions.length > 0) {
           const {
             correct_option_id,
-            id
+            id,
           } = questions[0];
           const user_id = await getUid(ctx.callbackQuery.from.username || "");
           if (!user_id) {
-            await ctx.reply(lang ? "Пользователь не найден." : "User not found.");
+            await ctx.reply(
+              lang ? "Пользователь не найден." : "User not found.",
+            );
             return;
           }
 
@@ -630,8 +727,13 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
               newQuestions[0];
             const topic = lang ? ruTopic : enTopic;
             // Формируем сообщение
-            const messageText =
-              `${topic}\n\n<i><u>${lang ? "Теперь мы предлагаем вам закрепить полученные знания." : "Now we are offering you to reinforce the acquired knowledge."}</u></i>\n\n<b>${lang ? "Total: " : "Total: "}${allAnswers} $IGLA</b>`;
+            const messageText = `${topic}\n\n<i><u>${
+              lang
+                ? "Теперь мы предлагаем вам закрепить полученные знания."
+                : "Now we are offering you to reinforce the acquired knowledge."
+            }</u></i>\n\n<b>${
+              lang ? "Total: " : "Total: "
+            }${allAnswers} $IGLA</b>`;
 
             // Формируем кнопки
             const inlineKeyboard = [
@@ -660,7 +762,9 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
               return;
             }
           } else {
-            await ctx.reply(lang ? "Вопросы не найдены." : "No questions found.");
+            await ctx.reply(
+              lang ? "Вопросы не найдены." : "No questions found.",
+            );
           }
         } else {
           console.error("Invalid callback(289)");
