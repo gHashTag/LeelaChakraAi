@@ -23,6 +23,7 @@ export type SupabaseUser = TUser & {
   position?: string | null;
   designation?: string | null;
   isWrite?: boolean | null;
+  first_request?: boolean | null;
 };
 
 export interface UserWithFullName {

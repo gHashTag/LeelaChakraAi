@@ -2,7 +2,6 @@ import {
   getBiggestT,
   getCorrectsT,
   getQuestionT,
-  LastCallbackResult,
   resetProgressT,
   SupabaseResponse,
   updateProgressContext,
@@ -220,13 +219,18 @@ export async function getCorrects(
         .from("progress")
         .select("*")
         .eq("user_id", user_id)
-        .single();
+        .single()
 
       console.log(dataCorrects, "dataCorrects");
       console.log(errorCorrects, "errorCorrects");
 
-      if (errorCorrects !== null) {
-        throw new Error("Error getCorrects: " + errorCorrects.message);
+      if (errorCorrects && !dataCorrects) {
+        const { error: insertError } = await supabase
+          .from("progress")
+          .insert([{ user_id: user_id }]);
+
+        if (insertError) throw new Error(insertError.message);
+        return 0;
       }
 
       if (!dataCorrects) {

@@ -1,5 +1,5 @@
-import { GameStep, GameStepResultT, plansType } from "../types/index.ts";
-import { getAiFeedback, getAiFeedbackFromSupabase } from "./ai.ts";
+import { GameStep, GameStepResultT } from "../types/index.ts";
+import { getAiFeedbackFromSupabase } from "./ai.ts";
 import { supabase } from "./index.ts";
 
 export async function gameStep({ roll, response, telegram_id }: GameStepResultT) {
@@ -152,4 +152,9 @@ export async function getPlan(loka: number, language_code: string) {
     short_desc: data[`short_desc_${language_code}`],
     image: data.image
   }
+}
+
+export async function getPlanByUserId(user_id: string, language_code: string) {
+  const lastStep = await getLastStep(user_id);
+  return await getPlan(lastStep.loka, language_code);
 }

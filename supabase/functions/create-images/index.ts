@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
       }
 
       const id = row.id
-      const prompt = sanitizePrompt(row[columnName])
+      const prompt = row[columnName]
 
       if (typeof prompt !== 'string') {
         console.log(`Пропущена запись с id=${id}: некорректный prompt`)
