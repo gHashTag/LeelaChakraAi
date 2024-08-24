@@ -53,7 +53,7 @@ await leelaChakraBot.api.setMyCommands([
   {
     command: "/buy",
     description: "Buy a plan",
-  },
+  }
   // {
   //   command: "/room",
   //   description: "Create a room",
@@ -61,7 +61,6 @@ await leelaChakraBot.api.setMyCommands([
 ]);
 
 leelaChakraBot.command("start", async (ctx: Context) => {
-  await checkAndUpdate(ctx);
   console.log("start");
   if (!ctx.from) return;
   await ctx.replyWithChatAction("typing"); // Отправка действия набора сообщения в чате
@@ -93,7 +92,6 @@ leelaChakraBot.command("start", async (ctx: Context) => {
 });
 
 leelaChakraBot.command("step", async (ctx) => {
-  await checkAndUpdate(ctx);
   console.log("step");
   await checkAndUpdate(ctx)
   await ctx.replyWithChatAction("typing");
@@ -129,7 +127,6 @@ leelaChakraBot.command("language", async (ctx) => {
 });
 
 leelaChakraBot.command("course", async (ctx) => {
-  await checkAndUpdate(ctx);
   console.log("course");
   await checkAndUpdate(ctx)
   const theme = "leelachakra"
@@ -140,60 +137,34 @@ leelaChakraBot.command("course", async (ctx) => {
     await ctx.reply(lang ? "Тема не найдена." : "Theme not found.");
     return;
   }
-  try {
-    const questionContext = {
-      lesson_number: 1,
-      subtopic: 1,
-    };
+    try {
+      const questionContext = {
+        lesson_number: 1,
+        subtopic: 1,
+      };
 
-    console.log(questionContext, "questionContext");
-    const questions = await getQuestion({
-      ctx: questionContext,
-      language: theme,
-    });
-    if (questions.length > 0) {
-      const {
-        topic: ruTopic,
-        image_lesson_url,
-        topic_en: enTopic,
-        url,
-      } = questions[0];
-
-      const user_id = await getUid(ctx.from?.username || "");
-      if (!user_id) {
-        ctx.reply(lang ? "Вы не зарегестрированы." : "You are not registered.");
-        return;
-      }
-      const topic = lang ? ruTopic : enTopic;
-      const allAnswers = await getCorrects({
-        user_id: user_id.toString(),
-        language: "all",
+      console.log(questionContext, "questionContext")
+      const questions = await getQuestion({
+        ctx: questionContext,
+        language: theme,
       });
-      // Формируем сообщение
-      const messageText = `${topic}\n\n<i><u>${
-        lang
-          ? "Теперь мы предлагаем вам закрепить полученные знания."
-          : "Now we are offering you to reinforce the acquired knowledge."
-      }</u></i>\n\n<b>${lang ? "Total: " : "Total: "}${allAnswers} $IGLA</b>`;
+      if (questions.length > 0) {
+        const {
+          topic: ruTopic,
+          image_lesson_url,
+          topic_en: enTopic,
+          url
+        } = questions[0];
 
-      // Формируем кнопки
-      const inlineKeyboard = [
-        [{
-          text: lang ? "Перейти к вопросу" : "Go to the question",
-          callback_data: `${theme}_01_01`,
-        }],
-      ];
-
-      if (url && lang) {
-        console.log(url, "url");
-        await ctx.replyWithVideoNote(url);
-      }
-      if (image_lesson_url) {
-        // Отправляем сообщение
-        await ctx.replyWithPhoto(image_lesson_url || "", {
-          caption: messageText,
-          parse_mode: "HTML",
-          reply_markup: { inline_keyboard: inlineKeyboard },
+        const user_id = await getUid(ctx.from?.username || "");
+        if (!user_id) {
+          ctx.reply(lang ? "Вы не зарегестрированы." : "You are not registered.");
+          return;
+        }
+        const topic = lang ? ruTopic : enTopic;
+        const allAnswers = await getCorrects({
+          user_id: user_id.toString(),
+          language: "all",
         });
         // Формируем сообщение
         const messageText =
@@ -227,18 +198,11 @@ leelaChakraBot.command("course", async (ctx) => {
           return;
         }
       } else {
-        await ctx.reply(messageText, {
-          parse_mode: "HTML",
-          reply_markup: { inline_keyboard: inlineKeyboard },
-        });
-        return;
+        await ctx.reply(lang ? "Вопросы не найдены." : "No questions found.");
       }
-    } else {
-      await ctx.reply(lang ? "Вопросы не найдены." : "No questions found.");
+    } catch (error) {
+      console.error(error);
     }
-  } catch (error) {
-    console.error(error);
-  }
 });
 
 leelaChakraBot.command("buy", async (ctx) => {
@@ -279,12 +243,13 @@ leelaChakraBot.command("buy", async (ctx) => {
     reply_markup: {
       inline_keyboard: [[{ text: lang ? "Ученик" : "Student", callback_data: "buy_student" }], [{ text: lang ? "Эксперт" : "Expert", callback_data: "buy_expert" }], [{ text: lang ? "Ментор" : "Mentor", callback_data: "buy_mentor" }]],
     },
-  );
+    parse_mode: "HTML",
+  })
   return;
 });
 
 leelaChakraBot.on("pre_checkout_query", (ctx) => {
-  ctx.answerPreCheckoutQuery(true);
+  ctx.answerPreCheckoutQuery(true)
   return;
 });
 
@@ -373,7 +338,7 @@ leelaChakraBot.on("message:text", async (ctx) => {
         username: ctx.from.username,
         language_code,
       });
-      console.log("💤content", ai_content);
+      console.log("💤content", ai_content)
       await ctx.reply(ai_content, { parse_mode: "Markdown" });
       return;
     }
@@ -383,7 +348,6 @@ leelaChakraBot.on("message:text", async (ctx) => {
 });
 
 leelaChakraBot.on("callback_query:data", async (ctx) => {
-  await checkAndUpdate(ctx);
   await ctx.replyWithChatAction("typing");
   console.log(ctx);
   await checkAndUpdate(ctx)
@@ -462,7 +426,7 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
         "XTR", // Используйте валюту Telegram Stars
         [{ label: "Цена", amount: 282 }],
       );
-      return;
+      return
     }
     if (callbackData.endsWith("expert")){
       await ctx.replyWithInvoice(
@@ -473,7 +437,7 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
         "XTR", // Используйте валюту Telegram Stars
         [{ label: "Цена", amount: 1978 }],
       );
-      return;
+      return
     }
     if (callbackData.endsWith("mentor")){
       await ctx.replyWithInvoice(
@@ -484,7 +448,7 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
         "XTR", // Используйте валюту Telegram Stars
         [{ label: "Цена", amount: 19782 }],
       );
-      return;
+      return
     }
   }
   if (
@@ -493,14 +457,14 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
   ) {
     if (callbackData === "start_test") {
       try {
-        const theme = callbackData.split("_")[1];
-        console.log(`start_test`);
+        const theme = callbackData.split("_")[1]
+        console.log(`start_test`)
         const questionContext = {
           lesson_number: 1,
           subtopic: 1,
         };
 
-        console.log(theme);
+        console.log(theme)
         const questions = await getQuestion({
           ctx: questionContext,
           language: theme,
@@ -655,10 +619,8 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
     if (isHaveAnswer) {
       try {
         if (ctx.callbackQuery.from.id) {
-          console.log("editMessageReplyMarkup");
-          await ctx.editMessageReplyMarkup({
-            reply_markup: { inline_keyboard: [] },
-          });
+          console.log("editMessageReplyMarkup")
+          await ctx.editMessageReplyMarkup({ reply_markup: { inline_keyboard: [] } }); 
         }
         const [language, lesson_number, subtopic, answer] = callbackData.split(
           "_",
@@ -672,13 +634,11 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
         if (questions.length > 0) {
           const {
             correct_option_id,
-            id,
+            id
           } = questions[0];
           const user_id = await getUid(ctx.callbackQuery.from.username || "");
           if (!user_id) {
-            await ctx.reply(
-              lang ? "Пользователь не найден." : "User not found.",
-            );
+            await ctx.reply(lang ? "Пользователь не найден." : "User not found.");
             return;
           }
 
@@ -796,9 +756,7 @@ leelaChakraBot.on("callback_query:data", async (ctx) => {
               return;
             }
           } else {
-            await ctx.reply(
-              lang ? "Вопросы не найдены." : "No questions found.",
-            );
+            await ctx.reply(lang ? "Вопросы не найдены." : "No questions found.");
           }
         } else {
           console.error("Invalid callback(289)");
